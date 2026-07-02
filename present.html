@@ -177,32 +177,30 @@
   </footer>
 </div>
 <script>
-  async function copyPrompt(id, btn){
-    const text = document.getElementById(id).textContent;
-    try { await navigator.clipboard.writeText(text); }
-    catch(e){
+  function copyTextWithFallback(text){
+    return navigator.clipboard.writeText(text).then(() => true).catch(() => {
       const ta = document.createElement('textarea');
       ta.value = text; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); ta.remove();
-    }
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    });
+  }
+  function showCopyResult(btn, ok){
     const orig = btn.textContent;
-    btn.textContent = '✔ コピーしました！';
-    setTimeout(() => { btn.textContent = orig; }, 1800);
+    btn.textContent = ok ? '✔ コピーしました！' : '✖ コピーできませんでした。⬇ ダウンロードをご利用ください';
+    setTimeout(() => { btn.textContent = orig; }, ok ? 1800 : 3500);
+  }
+  async function copyPrompt(id, btn){
+    const ok = await copyTextWithFallback(document.getElementById(id).textContent);
+    showCopyResult(btn, ok);
   }
   async function copyFile(path, btn){
     try {
       const res = await fetch(path);
       if(!res.ok) throw new Error('fetch failed');
-      const text = await res.text();
-      try { await navigator.clipboard.writeText(text); }
-      catch(e){
-        const ta = document.createElement('textarea');
-        ta.value = text; document.body.appendChild(ta); ta.select();
-        document.execCommand('copy'); ta.remove();
-      }
-      const orig = btn.textContent;
-      btn.textContent = '✔ コピーしました！';
-      setTimeout(() => { btn.textContent = orig; }, 1800);
+      const ok = await copyTextWithFallback(await res.text());
+      showCopyResult(btn, ok);
     } catch(e){
       window.location.href = path;
     }
